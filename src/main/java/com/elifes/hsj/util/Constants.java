@@ -19,4 +19,7 @@ public class Constants {
 	public static final String DB_NAME_LABEL = "dbName";
 	public static final String AUTH_KEY_LABEL = "akey";
 	
+	/** 2s */
+	public static final int HS_TIMEOUT = 200000;
+	
 }

@@ -5,7 +5,7 @@
  */
 package com.elifes.hsj.util;
 
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 描述：
@@ -14,9 +14,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  */
 public class IDGenerator {
-	private static AtomicInteger generator = new AtomicInteger(0);
+	private static AtomicLong generator = new AtomicLong(0L);
 
-	public static int nextId(){
+	public static long nextId(){
 		return generator.incrementAndGet();
 	}
 }

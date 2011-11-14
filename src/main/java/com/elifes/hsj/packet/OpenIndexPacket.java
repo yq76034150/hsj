@@ -31,38 +31,54 @@ public class OpenIndexPacket extends AbstractPacket{
 		this.columnNames = columnNames;
 		//this.filterFieldList = filterFieldList;
 	}
-
-	public String encode() {
-		StringBuffer requestMsg = new StringBuffer();
-		// header
-		this.writeToken(requestMsg, OPERATOR_OPEN_INDEX);
-		this.writeTokenSeparator(requestMsg);
-		// id
-		this.writeToken(requestMsg, this.indexId);
-		this.writeTokenSeparator(requestMsg);
-		// db name
-		this.writeToken(requestMsg, this.dbName);
-		this.writeTokenSeparator(requestMsg);
-		// tableName
-		this.writeToken(requestMsg, this.tblName);
-		this.writeTokenSeparator(requestMsg);
-		// indexName
-		this.writeToken(requestMsg, this.indexName);
-		this.writeTokenSeparator(requestMsg);
-		// field list
-		this.writeToken(requestMsg, CollectionUtil.join(columnNames));
-
-		// filter field list
-//		if (filterFieldList.size() != 0) {
-//			this.writeTokenSeparator(requestMsg);
-//			this.writeToken(requestMsg, CollectionUtil.join(filterFieldList));
-//			this.writeCommandTerminate(requestMsg);
-//		} else {
-//			this.writeCommandTerminate(requestMsg);
-//
-//		}
-		
-		return requestMsg.toString();
+	
+	@Override
+	protected void encodeHeader(StringBuilder reqMsg) {
+		reqMsg.append(autoAppendTab(OPERATOR_OPEN_INDEX));
 	}
+	@Override
+	protected void encodeBody(StringBuilder reqMsg) {
+		reqMsg.append(autoAppendTab(indexId))
+			  .append(autoAppendTab(dbName))
+			  .append(autoAppendTab(tblName))
+			  .append(autoAppendTab(indexName))
+			  .append(CollectionUtil.join(columnNames))
+		;
+	}
+	
+	
+
+//	public String encode() {
+//		StringBuffer requestMsg = new StringBuffer();
+//		// header
+//		this.writeToken(requestMsg, OPERATOR_OPEN_INDEX);
+//		this.writeTokenSeparator(requestMsg);
+//		// id
+//		this.writeToken(requestMsg, this.indexId);
+//		this.writeTokenSeparator(requestMsg);
+//		// db name
+//		this.writeToken(requestMsg, this.dbName);
+//		this.writeTokenSeparator(requestMsg);
+//		// tableName
+//		this.writeToken(requestMsg, this.tblName);
+//		this.writeTokenSeparator(requestMsg);
+//		// indexName
+//		this.writeToken(requestMsg, this.indexName);
+//		this.writeTokenSeparator(requestMsg);
+//		// field list
+//		this.writeToken(requestMsg, CollectionUtil.join(columnNames));
+//
+//		// filter field list
+////		if (filterFieldList.size() != 0) {
+////			this.writeTokenSeparator(requestMsg);
+////			this.writeToken(requestMsg, CollectionUtil.join(filterFieldList));
+////			this.writeCommandTerminate(requestMsg);
+////		} else {
+////			this.writeCommandTerminate(requestMsg);
+////
+////		}
+//		
+//		return requestMsg.toString();
+//	}
 
 }

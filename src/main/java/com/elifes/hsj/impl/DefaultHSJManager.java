@@ -18,6 +18,7 @@ import com.elifes.hsj.IDBConfigLoader;
 import com.elifes.hsj.IDBLookupStrategy;
 import com.elifes.hsj.client.HSJClient;
 import com.elifes.hsj.client.HSJClientFactory;
+import com.elifes.hsj.exception.HSJException;
 import com.elifes.hsj.model.CompareOperator;
 import com.elifes.hsj.model.DBConfig;
 import com.elifes.hsj.model.TableConfig;
@@ -51,7 +52,7 @@ public class DefaultHSJManager implements HSJManager {
 		return self;
 	}
 
-	public String init(IDBLookupStrategy dbLookupStrategy) {
+	public String init(IDBLookupStrategy dbLookupStrategy) throws HSJException {
 		tableConfig = dbLookupStrategy.lookup(null);
 		String indexId = null;
 		
@@ -69,7 +70,7 @@ public class DefaultHSJManager implements HSJManager {
 		return hsjClientFactory.createClient(tableConfig.getDbConfig().getIp(), tableConfig.getDbConfig().getPort());
 	}
 
-	public String openIndex(TableConfig tableConfig) {
+	public String openIndex(TableConfig tableConfig) throws HSJException {
 		return openIndex(
 				tableConfig.getDbConfig().getDbName(),
 				tableConfig.getTblName(), tableConfig.getIndexName(),
@@ -77,7 +78,7 @@ public class DefaultHSJManager implements HSJManager {
 	}
 
 	public String openIndex(String dbName, String tblName, String indexName,
-			List<String> columnNames) {
+			List<String> columnNames) throws HSJException {
 		return getClient().requsetOpenIndex(dbName, tblName, indexName, columnNames);
 	}
 	/* (non-Javadoc)
@@ -92,14 +93,14 @@ public class DefaultHSJManager implements HSJManager {
 	/* (non-Javadoc)
 	 * @see com.elifes.hsj.HSJManager#auth(java.lang.String, java.lang.String)
 	 */
-	public void auth(String authType, String authKey) {
+	public void auth(String authType, String authKey) throws HSJException {
 		getClient().requsetAuth(authType, authKey);
 	}
 
 	/* (non-Javadoc)
 	 * @see com.elifes.hsj.HSJManager#insert(java.lang.String, java.util.List)
 	 */
-	public void insert(String indexId, List<String> values) {
+	public void insert(String indexId, List<String> values) throws HSJException {
 		getClient().requsetInsert(indexId, values);
 	}
 

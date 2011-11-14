@@ -10,6 +10,7 @@ import java.util.List;
 import org.junit.Test;
 
 import com.elifes.hsj.client.DefaultDBLookupStrategy;
+import com.elifes.hsj.exception.HSJException;
 import com.elifes.hsj.impl.DefaultDBConfigLoader;
 import com.elifes.hsj.impl.DefaultHSJManager;
 import com.elifes.hsj.model.TableConfig;
@@ -44,12 +45,19 @@ public class HSJClientInvoke {
 		TableConfig tc = new TableConfig();
 		IDBConfigLoader dbConfigLoader = new DefaultDBConfigLoader();
 		tc.setDbConfig(dbConfigLoader.load());
+		tc.setTblName("user");
 		tc.setColumnNames(columnNames);
 		tc.setFilterColumnNames(filterColumnNames);
 		
 		s = new DefaultDBLookupStrategy(tc);
 		//hsjManager.set
-		String indexId = hsjManager.init(s);
+		String indexId = null;
+		try {
+			indexId = hsjManager.init(s);
+		} catch (HSJException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 		String postfix = "this.index" + "_" + 1;
 		final String[] values = new String[11];
@@ -68,7 +76,12 @@ public class HSJClientInvoke {
 		List<String> values1 = Arrays.asList(values);
 		
 		//直接操作数据了
-		hsjManager.insert(indexId, values1);
+		try {
+			hsjManager.insert(indexId, values1);
+		} catch (HSJException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 		
 		

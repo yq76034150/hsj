@@ -8,6 +8,7 @@ package com.elifes.hsj;
 import java.sql.ResultSet;
 import java.util.List;
 
+import com.elifes.hsj.exception.HSJException;
 import com.elifes.hsj.model.CompareOperator;
 import com.elifes.hsj.model.TableConfig;
 
@@ -25,24 +26,24 @@ public interface HSJManager {
 	 * @param dbLookupStrategy 获取的连接信息的策略类
 	 * @return 获取连接的标识
 	 */
-	public String init(IDBLookupStrategy dbLookupStrategy);
+	public String init(IDBLookupStrategy dbLookupStrategy) throws HSJException;
 	/**
 	 * 
 	 * 描述：
 	 * @param tableConfig
 	 * @return
 	 */
-	public String openIndex(TableConfig tableConfig);
+	public String openIndex(TableConfig tableConfig) throws HSJException;
 	
 	public String openIndex(String dbName, String tblName, String indexName,
-			List<String> columnNames);
+			List<String> columnNames) throws HSJException;
 
 //	public String openIndex(String indexId, String dbName, String tblName,
 //			String indexName, List<String> columnNames);
 
-	public void auth(String authType, String authKey);
+	public void auth(String authType, String authKey) throws HSJException;
 
-	public void insert(String indexId, List<String> values);
+	public void insert(String indexId, List<String> values) throws HSJException;
 
 	public ResultSet find(String indexId, CompareOperator operator,
 			String[] filterValues, int limit, int offset,

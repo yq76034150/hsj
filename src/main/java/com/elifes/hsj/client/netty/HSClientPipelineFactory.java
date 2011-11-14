@@ -5,7 +5,7 @@
  */
 package com.elifes.hsj.client.netty;
 
-import static org.jboss.netty.channel.Channels.*;
+import static org.jboss.netty.channel.Channels.pipeline;
 
 import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
@@ -13,6 +13,8 @@ import org.jboss.netty.handler.codec.frame.DelimiterBasedFrameDecoder;
 import org.jboss.netty.handler.codec.frame.Delimiters;
 import org.jboss.netty.handler.codec.string.StringDecoder;
 import org.jboss.netty.handler.codec.string.StringEncoder;
+
+import com.elifes.hsj.client.HSJClient;
 
 /**
  * 描述：
@@ -22,7 +24,11 @@ import org.jboss.netty.handler.codec.string.StringEncoder;
  * 
  */
 public class HSClientPipelineFactory implements ChannelPipelineFactory {
-
+	private HSJClient hsjClient;
+	public HSClientPipelineFactory(HSJClient hsjClient){
+		this.hsjClient = hsjClient;
+	}
+	
 	public ChannelPipeline getPipeline() throws Exception {
 		// Create a default pipeline implementation.
 	    ChannelPipeline pipeline = pipeline();
@@ -34,7 +40,7 @@ public class HSClientPipelineFactory implements ChannelPipelineFactory {
 	    pipeline.addLast("encoder", new StringEncoder());
 
 	    // and then business logic.
-	    pipeline.addLast("handler", new HSClientHandler());
+	    pipeline.addLast("handler", new HSClientHandler(hsjClient));
 
 	    return pipeline;
 	}

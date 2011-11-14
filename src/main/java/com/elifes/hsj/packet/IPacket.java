@@ -16,4 +16,8 @@ import java.util.concurrent.TimeUnit;
  */
 public interface IPacket {
 	public String encode();
+	
+	public void setExceptionMessage(String t);
+
+	public String getExceptionMessage();
 }

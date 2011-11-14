@@ -21,29 +21,52 @@ public class InsertPacket extends AbstractPacket{
 		this.values = values;
 	}
 
-	public String encode() {
-		StringBuffer requestMsg = new StringBuffer();
-		// id
-		this.writeToken(requestMsg, this.indexId);
-		this.writeTokenSeparator(requestMsg);
-		// operator
-		this.writeToken(requestMsg, OPERATOR_INSERT);
-		this.writeTokenSeparator(requestMsg);
-		// key nums
+	@Override
+	protected void encodeHeader(StringBuilder reqMsg) {
+		
+	}
 
-		this.writeToken(requestMsg, String.valueOf(values.size()));
-		this.writeTokenSeparator(requestMsg);
+	@Override
+	protected void encodeBody(StringBuilder reqMsg) {
+		reqMsg.append(autoAppendTab(indexId))
+			  .append(autoAppendTab(OPERATOR_INSERT))
+			  .append(autoAppendTab(String.valueOf(values.size())));
 		int i = 0;
-		for (String value : values) {
-			this.writeToken(requestMsg, value);
-			if (i == values.size() - 1) {
-				this.writeCommandTerminate(requestMsg);
+		for(String value : values){
+			if(i != values.size() - 1){
+				reqMsg.append(autoAppendTab(value));
 			} else {
-				this.writeTokenSeparator(requestMsg);
+				reqMsg.append(value);
 			}
 			i++;
 		}
-		return requestMsg.toString();
 	}
+
+	
+	
+//	public String encode() {
+//		StringBuffer requestMsg = new StringBuffer();
+//		// id
+//		this.writeToken(requestMsg, this.indexId);
+//		this.writeTokenSeparator(requestMsg);
+//		// operator
+//		this.writeToken(requestMsg, OPERATOR_INSERT);
+//		this.writeTokenSeparator(requestMsg);
+//		// key nums
+//
+//		this.writeToken(requestMsg, String.valueOf(values.size()));
+//		this.writeTokenSeparator(requestMsg);
+//		int i = 0;
+//		for (String value : values) {
+//			this.writeToken(requestMsg, value);
+//			if (i == values.size() - 1) {
+//				this.writeCommandTerminate(requestMsg);
+//			} else {
+//				this.writeTokenSeparator(requestMsg);
+//			}
+//			i++;
+//		}
+//		return requestMsg.toString();
+//	}
 
 }

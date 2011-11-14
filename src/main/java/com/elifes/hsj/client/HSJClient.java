@@ -7,14 +7,15 @@ package com.elifes.hsj.client;
 
 import java.net.InetSocketAddress;
 import java.sql.ResultSet;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import org.apache.log4j.Logger;
 import org.jboss.netty.bootstrap.ClientBootstrap;
@@ -25,13 +26,14 @@ import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 
 import com.elifes.hsj.IDBConfigLoader;
 import com.elifes.hsj.client.netty.HSClientPipelineFactory;
+import com.elifes.hsj.exception.HSJException;
 import com.elifes.hsj.impl.DefaultDBConfigLoader;
 import com.elifes.hsj.model.CompareOperator;
 import com.elifes.hsj.model.DBConfig;
 import com.elifes.hsj.packet.AbstractPacket;
 import com.elifes.hsj.packet.IPacket;
-import com.elifes.hsj.packet.InsertPacket;
-import com.elifes.hsj.packet.OpenIndexPacket;
+import com.elifes.hsj.packet.PacketFactory;
+import com.elifes.hsj.util.Constants;
 import com.elifes.hsj.util.IDGenerator;
 
 /**
@@ -47,7 +49,12 @@ public class HSJClient {
 	private ChannelFuture future;
 	private IDBConfigLoader dbConfigLoader;
 	
-	private ConcurrentMap<String, Channel> connectionPool = new ConcurrentHashMap<String, Channel>();
+	private ConcurrentHashMap<Integer,ResponseFuture> pendingRequest = new ConcurrentHashMap<Integer,ResponseFuture>();
+	//private ConcurrentMap<String, CopyOnWriteArrayList<Channel>> connectionPool = new ConcurrentHashMap<String, CopyOnWriteArrayList<Channel>>();
+	
+	private List<String> indexIdList = new ArrayList<String>();
+	private List<Channel> channelList = new ArrayList<Channel>();
+	private BlockingQueue<Channel> connectionPool = new LinkedBlockingQueue<Channel>();
 	
 	private static HSJClient self = new HSJClient();
 
@@ -57,16 +64,29 @@ public class HSJClient {
 				new NioClientSocketChannelFactory(
 						Executors.newCachedThreadPool(),
 						Executors.newCachedThreadPool()));
-		bootstrap.setPipelineFactory(new HSClientPipelineFactory());
+		bootstrap.setPipelineFactory(new HSClientPipelineFactory(this));
 		bootstrap.setOption("tcpNoDelay", true);
 		
 		dbConfigLoader = new DefaultDBConfigLoader();
+		DBConfig dbConfig = dbConfigLoader.load();
+		future = bootstrap.connect(new InetSocketAddress(dbConfig.getIp(),
+				dbConfig.getPort()));
 		
+		//初始化 就建立多个indexId 和 channel 
+		initConnectionPool();
 	}
 	
 	public static HSJClient getInstance(){
 		return self;
 	}
+	
+	private void initConnectionPool() {
+		for(int i = 0; i < 2; i++){
+			Channel channel = getChannel();
+			connectionPool.offer(channel);
+		}
+	}
+
 	
 	
 //	public void init() {
@@ -81,64 +101,64 @@ public class HSJClient {
 //	}
 	
 	public String requsetOpenIndex(String dbName, String tblName,
-			String indexName, List<String> columnNames) {
-		DBConfig dbConfig = dbConfigLoader.load();
-		future = bootstrap.connect(new InetSocketAddress(dbConfig.getIp(),
-				dbConfig.getPort()));
+			String indexName, List<String> columnNames) throws HSJException {
+		Channel channel = getChannelFromPool();
 		
-		Channel channel = getChannel();
 		if(!future.isSuccess()){
 			//logger.error("connect error" +  future.getCause().getMessage());
 			throw new RuntimeException("open table error, detail is:" + future.getCause().getMessage());
 		}
 		String indexId = String.valueOf(IDGenerator.nextId());
-		IPacket openIndex = new  OpenIndexPacket(indexId, dbName, tblName,
-				indexName, columnNames);
 		
-		//ChannelFuture lastWriteFuture = channel.write(openIndex.encode());
-		
-		ChannelFuture lastWriteFuture = channel.write("P	1	test	user	PRIMARY last_name,first_name" + "\r\n");
-		
-		try {
-			Thread.sleep(20000);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		lastWriteFuture.awaitUninterruptibly(20, TimeUnit.SECONDS);
-		
-		lastWriteFuture.addListener(new ChannelFutureListener() {
+		//PacketFactory.getInstance().createAuthPacket(dbConfigLoader.load().getAuthKey());
+		if(requsetAuth(null, dbConfigLoader.load().getAuthKey())){
+			IPacket openIndexPacket = PacketFactory.getInstance().createOpenIndexPacket(indexId, dbName, tblName, indexName, columnNames);
+			//ChannelFuture lastWriteFuture = channel.write(openIndexPacket.encode());
 			
-			public void operationComplete(ChannelFuture future) throws Exception {
-				future.getCause();
-				
+			//ChannelFuture lastWriteFuture = channel.write("P	1	test	user	PRIMARY last_name,first_name" + "\r\n");
+
+			ResponseFuture responseFuture = new ResponseFuture(openIndexPacket, channel.getId());
+			pendingRequest.put(channel.getId(), responseFuture);
+			ChannelFuture lastWriteFuture = channel.write(openIndexPacket.encode());
+			//lastWriteFuture.addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
+			boolean result = responseFuture.get(Constants.HS_TIMEOUT);
+			connectionPool.offer(channel);
+			
+			if(result){
+				return indexId;
 			}
-		});
+		}
 		
-		boolean isTimeout = lastWriteFuture.awaitUninterruptibly(2, TimeUnit.SECONDS);
-		if(!isTimeout){
-			//throw new TimeoutException("open table timeout!");
-		}
-		if(!lastWriteFuture.isSuccess()){
-			throw new RuntimeException("open table error, detail is:" + lastWriteFuture.getCause().getMessage());
-		}
-		connectionPool.put(indexId, channel);
-		return indexId;
+		return null;
 	}
 
-	public void requsetAuth(String authType, String authKey) {
-		
-		
+	public boolean requsetAuth(String authType, String authKey) throws HSJException {
+		Channel channel = getChannelFromPool();
+		IPacket authPacket = PacketFactory.getInstance().createAuthPacket(
+				authKey);
+
+		ResponseFuture responseFuture = new ResponseFuture(authPacket, channel.getId());
+		pendingRequest.put(channel.getId(), responseFuture);
+		ChannelFuture lastWriteFuture = channel.write(authPacket.encode());
+		//lastWriteFuture.addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
+		boolean result = responseFuture.get(Constants.HS_TIMEOUT);
+		connectionPool.offer(channel);
+		return result;
 	}
 
-	public void requsetInsert(String indexId, List<String> values) {
-		Channel channel = connectionPool.get(indexId);
-		if(!future.isSuccess()){
-			//logger.error("connect error" +  future.getCause().getMessage());
-			throw new RuntimeException("open table error, detail is:" + future.getCause().getMessage());
-		}
-		IPacket insertPacket = new  InsertPacket(indexId, values);
-		channel.write(insertPacket.encode());
+	public void requsetInsert(String indexId, List<String> values) throws HSJException {
+		Channel channel = getChannelFromPool();
+		
+		IPacket insertPacket = PacketFactory.getInstance().createInsertPacket(indexId, values);
+		//channel.write(insertPacket.encode());
+		
+		ResponseFuture responseFuture = new ResponseFuture(insertPacket, channel.getId());
+		pendingRequest.put(channel.getId(), responseFuture);
+		ChannelFuture lastWriteFuture = channel.write(insertPacket.encode());
+		//lastWriteFuture.addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
+		boolean result = responseFuture.get(Constants.HS_TIMEOUT);
+		connectionPool.offer(channel);
+		//return result;
 	}
 
 	public ResultSet requsetFind(String id, CompareOperator operator,
@@ -147,7 +167,28 @@ public class HSJClient {
 		
 		return null;
 	}
-
+	
+	public void setResult(Integer id,boolean result){
+		ResponseFuture future = pendingRequest.remove(id);
+		future.setResult(result);
+		future.setDone();
+	}
+	
+	public void removeResponseFuture(String id){
+		pendingRequest.remove(id);
+	}
+	private Channel getChannelFromPool() throws HSJException{
+		Channel channel = null;
+		try {
+			channel = connectionPool.take();
+		} catch (InterruptedException e) {
+			//logger.error("get channel from pool error!", e);
+			throw new HSJException("get channel from pool error!", e);
+		}
+		
+		return channel;
+	}
+	
 	private Channel getChannel(){
 		boolean notTimeout = future.awaitUninterruptibly(2, TimeUnit.SECONDS);
 		if(notTimeout){
